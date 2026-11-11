@@ -9,3 +9,14 @@ jobs:
         with: {python-version: '3.12'}
       - run: pip install -r requirements.txt
       - run: pytest -q
+  stream-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker compose up --build -d
+      - run: docker compose exec -T scorer python -m src.smoke
+      - if: failure()
+        run: docker compose logs --no-color
+      - if: always()
+        run: docker compose down

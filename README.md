@@ -22,6 +22,10 @@ The response includes the feature values used in the decision, which is useful f
 
 ## Stream demo
 
+Run the same bounded smoke test as CI with `docker compose up --build -d` followed by `docker compose exec -T scorer python -m src.smoke`. It prints the matching alert and exits with an error if it cannot verify delivery.
+
+To inspect the topics manually:
+
 ```bash
 docker compose up --build -d
 for value in 120 130 110 125 135 128 980; do
