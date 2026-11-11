@@ -34,10 +34,20 @@ class Scorer:
 
 
 def main():
-    from confluent_kafka import Consumer, KafkaException, Producer
+    from confluent_kafka import Consumer, KafkaError, KafkaException, Producer
+    from confluent_kafka.admin import AdminClient, NewTopic
 
     logging.basicConfig(level=logging.INFO)
     broker = os.environ.get("KAFKA_BOOTSTRAP_SERVERS", "redpanda:9092")
+    admin = AdminClient({"bootstrap.servers": broker})
+    topics = [NewTopic(name, num_partitions=1, replication_factor=1) for name in (INPUT_TOPIC, ALERT_TOPIC)]
+    for creation in admin.create_topics(topics, request_timeout=15).values():
+        try:
+            creation.result()
+        except KafkaException as exc:
+            if exc.args[0].code() != KafkaError.TOPIC_ALREADY_EXISTS:
+                raise
+
     consumer = Consumer({
         "bootstrap.servers": broker,
         "group.id": "anomaly-scorer",
@@ -70,7 +80,9 @@ def main():
                 )
                 if producer.flush(12) or errors:
                     raise RuntimeError(f"Alert delivery failed at {source}: {errors}")
-            consumer.commit(message=message, asynchronous=False)
+            for partition in consumer.commit(message=message, asynchronous=False):
+                if partition.error:
+                    raise KafkaException(partition.error)
     finally:
         consumer.close()
 

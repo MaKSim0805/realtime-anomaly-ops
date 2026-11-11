@@ -24,6 +24,8 @@ The response includes the feature values used in the decision, which is useful f
 
 Run the same bounded smoke test as CI with `docker compose up --build -d` followed by `docker compose exec -T scorer python -m src.smoke`. It prints the matching alert and exits with an error if it cannot verify delivery.
 
+At startup the worker ensures both demo topics exist. Each topic uses one partition and one replica for the local single-broker stack.
+
 To inspect the topics manually:
 
 ```bash
