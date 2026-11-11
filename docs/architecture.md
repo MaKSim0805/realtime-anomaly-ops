@@ -2,4 +2,4 @@
 
 `producers -> Redpanda topic -> consumer/features -> scorer -> alert topic -> Alertmanager/Grafana`
 
-The submitted synchronous endpoint is a deliberately inspectable core. Add a Kafka consumer that calls `detect`, Prometheus counters for decisions and a rolling feature store (Redis) before production use. The detector never labels a quiet baseline as anomalous, preventing divide-by-zero false alerts.
+The worker and HTTP endpoint share the same detector. The worker builds its baseline from events in Kafka, while the synchronous endpoint accepts a caller-provided baseline. A zero-variance window returns a zero z-score under the current scoring policy. Durable feature state and downstream alert delivery are future extensions.

@@ -1,13 +1,12 @@
 # Realtime Anomaly Ops
 
-An event-scoring API for operational telemetry. The core detector keeps a rolling baseline per metric and returns an explainable z-score, severity and alert decision. In deployment, events enter through Redpanda/Kafka and alerts can be exported to Alertmanager.
+A streaming detector for operational telemetry. A Kafka consumer maintains a rolling baseline per metric and publishes anomalous events with their z-score and severity.
 
 ```mermaid
 flowchart LR
   P[Producers] --> K[Redpanda / Kafka]
   K --> S[Scoring consumer]
   S --> A[Alert topic]
-  A --> G[Grafana / Alertmanager]
 ```
 
 ## Quick start
@@ -21,4 +20,14 @@ curl -X POST localhost:8001/v1/events -H 'content-type: application/json' -d '{"
 
 The response includes the feature values used in the decision, which is useful for on-call triage.
 
-Use `docker compose up --build` for the local Redpanda + API stack. API docs and health are at `/docs` and `/health`.
+## Stream demo
+
+```bash
+docker compose up --build -d
+for value in 120 130 110 125 135 128 980; do
+  printf '{"metric":"checkout_latency_ms","value":%s}\n' "$value"
+done | docker compose exec -T redpanda rpk topic produce telemetry -k checkout_latency_ms
+docker compose exec redpanda rpk topic consume alerts -n 1
+```
+
+The first five samples warm up the window. The final spike should produce a critical alert. Keep the metric name as the Kafka key so its samples reach the same partition. Flagged values stay out of the rolling window. The worker commits the source offset after broker acknowledgement of an alert. A replay can produce duplicates, so downstream consumers can deduplicate on the included `source` identifier. Windows live in memory and warm up again after a restart. Use a bounded set of metric names in this demo.
